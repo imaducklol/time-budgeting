@@ -1,4 +1,4 @@
-from database import db
+from app.database import db
 from datetime import datetime
 
 """
@@ -27,7 +27,7 @@ Relations:
 class User(db.Model):
     __tablename__ = 'user'
 
-    user_id  = db.Column(db.Integer,     primary_key=True)
+    user_id  = db.Column(db.Integer,     primary_key=True, autoincrement=True)
     username = db.Column(db.String(80),  nullable=False)
     email    = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
@@ -43,7 +43,7 @@ class User(db.Model):
 class device(db.Model):
     __tablename__ = 'device'
 
-    user_id     = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True, cascade=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey('user.user_id', ondelete="CASCADE"), primary_key=True)
     device_name = db.Column(db.String(80), primary_key=True)
 
     def to_dict(self):
@@ -55,9 +55,9 @@ class device(db.Model):
 class budget(db.Model):
     __tablename__ = 'budget'
 
-    budget_id = db.Column(db.Integer, primary_key=True)
+    budget_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     budget_name = db.Column(db.String(80), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
 
     def to_dict(self):
         return {
@@ -69,7 +69,7 @@ class budget(db.Model):
 class category(db.Model):
     __tablename__ = 'category'
 
-    category_id    = db.Column(db.Integer, primary_key=True)
+    category_id    = db.Column(db.Integer, primary_key=True, autoincrement=True)
     category_name  = db.Column(db.String(80), nullable=False)
     time_allocated = db.Column(db.DateTime, nullable=False)
     budget_id      = db.Column(db.Integer, db.ForeignKey('budget.budget_id'), nullable=False)
@@ -87,7 +87,7 @@ class category(db.Model):
 class group(db.Model):
     __tablename__ = 'group'
 
-    group_id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     group_name = db.Column(db.String(80), nullable=False)
     budget_id = db.Column(db.Integer, db.ForeignKey('budget.budget_id'), nullable=False)
 
@@ -101,7 +101,7 @@ class group(db.Model):
 class transaction(db.Model):
     __tablename__ = 'transaction'
 
-    transaction_id   = db.Column(db.Integer, primary_key=True)
+    transaction_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     transaction_name = db.Column(db.String(80), nullable=False)
     period           = db.Column(db.Interval, nullable=False)
     date_time        = db.Column(db.DateTime, nullable=False)

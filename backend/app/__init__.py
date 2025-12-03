@@ -8,7 +8,7 @@ Module to serve endpoints for our database
 
 from flask import Flask
 from app.config import Config
-from app.database import db, init_db
+from app.database import db
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -17,4 +17,15 @@ def create_app(config_class=Config):
     # Initialize database
     db.init_app(app)
 
+    from app.routes.user import user_bp
+    app.register_blueprint(user_bp)
 
+    # Create tables that do not exist yet
+    with app.app_context():
+        db.create_all()
+
+    @app.route('/health')
+    def health_check():
+        return {'status': 'healthy'}, 200
+
+    return app

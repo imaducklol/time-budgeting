@@ -12,7 +12,7 @@ def get_users():
 @user_bp.route('/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     """Get a single user"""
-    user = User.query.get(user_id)
+    user = User.query.get_or_404(user_id)
     return jsonify(user.to_dict()), 200
 
 @user_bp.route('', methods=['POST'])
