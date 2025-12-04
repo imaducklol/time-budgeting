@@ -1,5 +1,6 @@
-from app.models import User
 from flask import Blueprint, jsonify, request
+from app.database import db
+from app.models import User
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
@@ -27,3 +28,8 @@ def create_user():
         username=data.get("username"),
         email=data.get("email"),
     )
+
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify(user.to_dict()), 201
