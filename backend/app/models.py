@@ -40,7 +40,7 @@ class User(db.Model):
             'created_at': self.created_at.isoformat(),
         }
 
-class device(db.Model):
+class Device(db.Model):
     __tablename__ = 'device'
 
     user_id     = db.Column(db.Integer, db.ForeignKey('user.user_id', ondelete="CASCADE"), primary_key=True)
@@ -52,7 +52,7 @@ class device(db.Model):
             'device_name': self.device_name,
         }
 
-class budget(db.Model):
+class Budget(db.Model):
     __tablename__ = 'budget'
 
     budget_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -66,7 +66,7 @@ class budget(db.Model):
             'user_id': self.user_id,
         }
 
-class category(db.Model):
+class Category(db.Model):
     __tablename__ = 'category'
 
     category_id    = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -84,7 +84,7 @@ class category(db.Model):
             'group_id': self.group_id,
         }
 
-class group(db.Model):
+class Group(db.Model):
     __tablename__ = 'group'
 
     group_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -98,7 +98,7 @@ class group(db.Model):
             'budget_id': self.budget_id,
         }
 
-class transaction(db.Model):
+class Transaction(db.Model):
     __tablename__ = 'transaction'
 
     transaction_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -114,7 +114,7 @@ class transaction(db.Model):
             'date_time': self.date_time,
         }
 
-class authorizes(db.Model):
+class Authorizes(db.Model):
     __tablename__ = 'authorizes'
 
     authorizer_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True, nullable=False)
