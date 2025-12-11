@@ -11,20 +11,9 @@ dependencies = [
     "Flask-Migrate>=4.0.5",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "black>=23.0.0",
-    "flake8>=6.0.0",
-]
+[project.scripts]
+run-backend = "app.run:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.black]
-line-length = 88
-target-version = ['py39']
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

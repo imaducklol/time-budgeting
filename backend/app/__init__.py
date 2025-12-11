@@ -22,11 +22,11 @@ def create_app(config_class=Config):
     from app.routes.groups import group_bp
     from app.routes.categories import category_bp
     from app.routes.transactions import transaction_bp
-    app.register_blueprint(user_bp)
     user_bp.register_blueprint(budget_bp, url_prefix='/<int:user_id>/budgets')
-    budget_bp.register_blueprint(group_bp, url_prefix='/<int:group_id>/groups')
-    budget_bp.register_blueprint(category_bp, url_prefix='/<int:category_id>/categories')
-    category_bp.register_blueprint(transaction_bp, url_prefix='/<int:transaction_id>/transactions')
+    budget_bp.register_blueprint(group_bp, url_prefix='/<int:budget_id>/groups')
+    budget_bp.register_blueprint(category_bp, url_prefix='/<int:budget_id>/categories')
+    category_bp.register_blueprint(transaction_bp, url_prefix='/<int:category_id>/transactions')
+    app.register_blueprint(user_bp)
 
     # Create tables that do not exist yet
     with app.app_context():

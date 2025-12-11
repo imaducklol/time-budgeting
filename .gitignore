@@ -1,4 +1,12 @@
+# Editors
 .idea/
 .vscode/
-.env
+
+# Python
+*venv/
 __pycache__/
+*.egg-info/
+*.pyc
+
+# Dont take my env files.....
+.env
