@@ -1,3 +1,11 @@
+"""
+Author: Orion Hess
+Created: 2025-12-03
+Updated: 2025-12-03
+
+Configuration settings for the time budgeting application.
+"""
+
 import os
 import dotenv
 

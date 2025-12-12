@@ -1,28 +1,13 @@
+"""
+Author: Orion Hess
+Created: 2025-12-03
+Updated: 2025-12-11
+
+Database models for the time budgeting application.
+"""
+
 from app.database import db
-from datetime import datetime
-
-"""
-Objects:
-    user(user_id, username, email)
-    device(user_id, name) 
-        uid -> user(name) cascade
-    budget(budget_id, budget_name, user_id)
-        user_id -> user(user_id)
-    category(category_id, category_name, time_allocated, budget_id, group_id)
-        budget_id -> budget(budget_id)
-        group_id -> group(group_id) - nullable
-    group(group_id, group_name, budget_id)
-        budget_id -> budget(budget_id)
-    transaction(transaction_id, transaction_name, period, date_time, from?, category_id)
-        category_id -> category(category_id)
-    
-    notification()
-
-Relations:
-    authorizes(authorizer, authorized)
-        authorizer -> user(user_id)
-        authorized -> user(user_id)
-"""
+from sqlalchemy.sql import func
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -30,7 +15,7 @@ class User(db.Model):
     user_id  = db.Column(db.Integer,     primary_key=True, autoincrement=True)
     username = db.Column(db.String(80),  nullable=False)
     email    = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime,  nullable=False, server_default=func.now())
 
     def to_dict(self):
         return {
@@ -57,7 +42,7 @@ class Budget(db.Model):
 
     budget_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     budget_name = db.Column(db.String(80), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id', ondelete='CASCADE'), nullable=False)
 
     def to_dict(self):
         return {
@@ -71,15 +56,15 @@ class Category(db.Model):
 
     category_id    = db.Column(db.Integer, primary_key=True, autoincrement=True)
     category_name  = db.Column(db.String(80), nullable=False)
-    time_allocated = db.Column(db.DateTime, nullable=False)
-    budget_id      = db.Column(db.Integer, db.ForeignKey('budget.budget_id'), nullable=False)
+    time_allocated = db.Column(db.Interval, nullable=False)
+    budget_id      = db.Column(db.Integer, db.ForeignKey('budget.budget_id', ondelete='CASCADE'), nullable=False)
     group_id       = db.Column(db.Integer, db.ForeignKey('group.group_id'), nullable=True)
 
     def to_dict(self):
         return {
             'category_id': self.category_id,
             'category_name': self.category_name,
-            'time_allocated': self.time_allocated,
+            'time_allocated': self.time_allocated.total_seconds(),
             'budget_id': self.budget_id,
             'group_id': self.group_id,
         }
@@ -89,7 +74,7 @@ class Group(db.Model):
 
     group_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     group_name = db.Column(db.String(80), nullable=False)
-    budget_id = db.Column(db.Integer, db.ForeignKey('budget.budget_id'), nullable=False)
+    budget_id = db.Column(db.Integer, db.ForeignKey('budget.budget_id', ondelete='CASCADE' ), nullable=False)
 
     def to_dict(self):
         return {
@@ -104,7 +89,8 @@ class Transaction(db.Model):
     transaction_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     transaction_name = db.Column(db.String(80), nullable=False)
     period           = db.Column(db.Interval, nullable=False)
-    date_time        = db.Column(db.DateTime, nullable=False)
+    date_time        = db.Column(db.DateTime, server_default=func.now(), nullable=False)
+    category_id      = db.Column(db.Integer, db.ForeignKey('category.category_id', ondelete='CASCADE'), nullable=False)
 
     def to_dict(self):
         return {
@@ -117,8 +103,8 @@ class Transaction(db.Model):
 class Authorizes(db.Model):
     __tablename__ = 'authorizes'
 
-    authorizer_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True, nullable=False)
-    authorized_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True, nullable=False)
+    authorizer_id = db.Column(db.Integer, db.ForeignKey('user.user_id', ondelete="CASCADE"), primary_key=True, nullable=False)
+    authorized_id = db.Column(db.Integer, db.ForeignKey('user.user_id', ondelete="CASCADE"), primary_key=True, nullable=False)
 
     def to_dict(self):
         return {

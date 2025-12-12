@@ -1,6 +1,16 @@
+"""
+Author:  Orion Hess
+Created: 2025-12-09
+Edited:  2025-12-11
+
+Routes for transaction management
+"""
+
 from flask import Blueprint, jsonify, request
 from app.database import db
 from app.models import Transaction
+from datetime import timedelta
+
 
 transaction_bp = Blueprint('transactions', __name__)
 
@@ -10,15 +20,16 @@ def get_transactions(user_id, budget_id):
     return jsonify([transaction.to_dict() for transaction in transactions]), 200
 
 @transaction_bp.post('')
-def create_transaction(user_id, budget_id):
+def create_transaction(user_id, budget_id, category_id):
     data = request.get_json()
 
-    if not data.get('transaction_name'):
-        return jsonify({'error': 'Transaction name not provided.'}), 400
+    if not data.get('transaction_name') or not data.get('period'):
+        return jsonify({'error': 'Transaction name and period are required.'}), 400
 
     transaction = Transaction(
-        group_name=data.get('group_name'),
-        budget_id=budget_id
+        transaction_name = data.get('transaction_name'),
+        period = timedelta(seconds=data.get('period')),
+        category_id = category_id
     )
 
     db.session.add(transaction)

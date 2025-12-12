@@ -1,6 +1,15 @@
+"""
+Author:  Orion Hess
+Created: 2025-12-09
+Edited:  2025-12-11
+
+Routes for category management
+"""
+
 from flask import Blueprint, jsonify, request
 from app.database import db
 from app.models import Category
+from datetime import timedelta
 
 category_bp = Blueprint('categories', __name__)
 
@@ -18,7 +27,7 @@ def create_category(user_id, budget_id):
 
     category = Category(
         category_name=data.get('category_name'),
-        time_allocated=data.get('time_allocated'),
+        time_allocated=timedelta(data.get('time_allocated')),
         budget_id=budget_id
     )
 

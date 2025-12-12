@@ -1,3 +1,11 @@
+"""
+Author:  Orion Hess
+Created: 2025-12-03
+Edited:  2025-12-11
+
+Routes for user management
+"""
+
 from flask import Blueprint, jsonify, request
 from app.database import db
 from app.models import User
@@ -36,10 +44,29 @@ def create_user():
 
 @user_bp.patch('/<int:user_id>')
 def update_user(user_id):
-    # TODO
-    pass
+    data = request.get_json()
+    if not data or not data.get("username") or not data.get("email"):
+        return jsonify({'error': 'Username and email are required'}), 400
+
+    user = User.query.filter(User.user_id == user_id).first()
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    user.username = data.get("username")
+    user.email = data.get("email")
+
+    db.session.commit()
+
+    return jsonify(user.to_dict()), 200
 
 @user_bp.delete('/<int:user_id>')
 def delete_user(user_id):
-    # TODO
-    pass
+    user = User.query.filter(User.user_id == user_id).first()
+
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({'message': 'User deleted'}), 200

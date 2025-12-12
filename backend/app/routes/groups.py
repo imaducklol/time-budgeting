@@ -1,3 +1,11 @@
+"""
+Author:  Orion Hess
+Created: 2025-12-09
+Edited:  2025-12-09
+
+Routes for group management
+"""
+
 from flask import Blueprint, jsonify, request
 from app.database import db
 from app.models import Group
