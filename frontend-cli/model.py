@@ -1,29 +1,36 @@
 """
 Author: Orion Hess
 Created: 2025-12-03
-Updated: 2025-12-10
+Updated: 2025-12-11
 
 Model handling the logic of the cli frontend
 """
+
 import colorama
-import requests
-from tabulate import tabulate
 from colorama import init, Fore, Style
+
 import view
-from typing import Union, Any
+from api import ApiHandler
+from helpers import debug
+from operations.user import User
+from operations.budget import Budget
+from operations.category import Category
+from operations.group import Group
+from operations.transaction import Transaction
+
+colorama.init(autoreset=True)
+
 
 class Model:
-    debug_mode = True
-
     # Login data
-    user_id: int = None
-    username: int = None
-    email: int = None
+    user_id: int | None = None
+    username: str | None = None
+    email: int | None = None
 
     # Is an item selected?
-    selected_budget: int = None
-    selected_category: int = None
-    selected_group: int = None
+    selected_budget: int | None = None
+    selected_category: int | None = None
+    selected_group: int | None = None
 
     # Items available for selection/display
     selection_index: int = None
@@ -31,86 +38,32 @@ class Model:
 
     up_to_date: bool = False
 
-    def __init__(self, url):
+    def __init__(self, url: str, debug_mode: bool = True) -> None:
         self.url = url
+        self.debug_mode = debug_mode
 
-        colorama.init(autoreset=True)
+        self.api_handler = ApiHandler(self.url, self.debug_mode)
+        self.user = User(self.api_handler)
+        self.budget = Budget(self.api_handler)
+        self.category = Category(self.api_handler)
+        self.group = Group(self.api_handler)
+        self.transaction = Transaction(self.api_handler)
 
     def get_screen(self):
         if not self.user_id:
-            self.debug("Login Screen")
+            debug(self.debug_mode, "Login Screen")
             return view.Login(self)
         if not self.selected_budget:
-            self.debug("Budget Screen")
+            debug(self.debug_mode, "Budget Screen")
             return view.BudgetSelection(self)
-        if self.selected_category:
-            self.debug("Category Screen")
-            return view.CategorySelected(self)
-        if self.selected_group:
-            self.debug("Group Screen")
-            return view.GroupSelected(self)
-        self.debug("Home Screen")
+        # if self.selected_category:
+        #    debug(self.debug_mode, "Category Screen")
+        #    return view.CategorySelected(self)
+        # if self.selected_group:
+        #    debug(self.debug_mode, "Group Screen")
+        #    return view.GroupSelected(self)
+        debug(self.debug_mode, "Home Screen")
         return view.Home(self)
-
-    def get_api(self, endpoint: str) -> Union[list[dict[str, Any]], dict[str, Any]]:
-        """
-        Call GET method on the given endpoint with the given data
-
-        :param endpoint: The endpoint to get from
-        :return: Dictionary of json response
-        """
-        query = f"{self.url}/api/{endpoint}"
-        self.debug(f"Querying: {query}")
-        response = requests.get(query)
-        self.debug(f"Response: {response}")
-        if response.status_code == 404:
-            raise Exception(f"Endpoint {endpoint} not found, returned 404")
-        return response.json()
-
-    def post_api(self, endpoint: str, data: dict[str, str]) -> dict[str, str]:
-        """
-        Call POST method on the given endpoint with the given data
-        :param endpoint: the endpoint to post to
-        :param data: the data to post
-        :return: Dictionary of json response
-        """
-        query = f"{self.url}/api/{endpoint}"
-        self.debug(f"Posting data: {data}\nData: {query}")
-        response = requests.post(query, json=data)
-        self.debug(f"Response: {response}")
-        if response.status_code == 404:
-            raise Exception(f"Endpoint {endpoint} not found, returned 404")
-        return response.json()
-
-    def delete_api(self, endpoint: str) -> dict[str, str]:
-        """
-        Call DELETE method on the given endpoint
-        :param endpoint: the endpoint to delete
-        :return: json response
-        """
-        query = f"{self.url}/api/{endpoint}"
-        self.debug(f"Deleting: {query}")
-        response = requests.delete(query)
-        if response.status_code == 404:
-            raise Exception(f"Endpoint {endpoint} not found, returned 404")
-        return response.json()
-
-    def patch_api(self, endpoint: str, data: dict[str, str]) -> dict[str, str]:
-        """
-        Call PATCH method on the given endpoint
-        :param endpoint: The endpoint to update
-        :param data: The data to send
-        :return: Dictionary of json response
-        """
-        query = f"{self.url}/api/{endpoint}"
-        self.debug(f"Updating: {query}\nData: {data}")
-        response = requests.patch(query, json=data)
-        if response.status_code == 404:
-            raise Exception(f"Endpoint {endpoint} not found, returned 404")
-        return response.json()
-
-    def push_api(self, endpoint: str, data):
-        pass
 
     def highlight_up(self):
         # If there are no items, keep index None
@@ -132,89 +85,104 @@ class Model:
             return
         self.selection_index = (self.selection_index + 1) % len(self.display_items)
 
-    def select_item(self) -> None:
+    def validate_index(self) -> bool:
+        """
+        Make sure that the selected index is valid
+        :return: True if valid, False otherwise
+        """
         # If we have not moved the cursor to anything, select the first
         if self.selection_index is None:
             self.selection_index = 0
-            return
+            return False
         # If the list is empty, pass
         if len(self.display_items) == 0:
-            return
-        # If the index is out of bounds, raise
+            return False
+        # If the index is out of bounds, fix
         if (self.selection_index < 0 or self.selection_index >= len(self.display_items)):
-            raise Exception(f"Selection index was out of bounds,"
-                            "this should never happen...")
+            self.selection_index = 0
+            return False
+        return True
+
+    def select_item(self) -> None:
+        if not self.validate_index():
+            return
+
         # Depending on what type of item we have selected, do something
         match self.display_items[self.selection_index]:
-            case ('user', x, _):
+            case ('user', x, y):
                 self.user_id = x
-                # TODO Get username
+                self.username = y
                 self.up_to_date = False
-                #self.user_info()
             case ('budget', x, _):
                 self.selected_budget = x
                 self.up_to_date = False
-                #self.budget_info()
             case ('category', x, _):
                 self.selected_category = x
-                self.category_info()
+                self.up_to_date = False
             case ('group', x, _):
                 self.selected_group = x
-                self.group_info()
-            case ('transaction', x, _):
-                self.transaction_info()
+                self.up_to_date = False
+            # case ('transaction', x, _):
+            #     self.up_to_date = False
             case _:
-                raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
+                return
+                # raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
 
     def edit_item(self):
-        # If we have not moved the cursor to anything, select the first
-        if self.selection_index is None:
-            self.selection_index = 0
-            return
+        self.validate_index()
 
         # Depending on what type of item we want to edit, do something
         match self.display_items[self.selection_index]:
-            case ('budget', _):
-                self.budget_update()
-            case ('category', _):
-                self.category_update()
-            case ('group', _):
-                self.group_update()
-            case ('transaction', _):
-                self.transaction_update()
+            case ('user', x, _):
+                self.user.user_update(x)
+            case ('budget', x, _):
+                self.budget.budget_update(self.user_id, x)
+            case ('category', x, _):
+                self.category.category_update(self.user_id, self.selected_budget, x)
+            case ('group', x, _):
+                self.group.group_update(self.user_id, self.selected_budget, x)
+            case ('transaction', x, _):
+                self.transaction.transaction_update(self.user_id, self.selected_budget, x)
+            case _:
+                raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
 
-    def validate_choice(self, message: str) -> bool:
-        """
-        Validate the user's choice for a given option
+    def delete_item(self):
+        self.validate_index()
 
-        :param message: Question to validate
-        :return: Boolean validated
-        """
-        print(message)
-        response = input("y/N: ")
-        return response.lower() == "y"
+        self.up_to_date = False
 
-    def print_dict(self, data: dict, headers: list[str], display_headers: list[str]) -> None:
-        """
-        Pretty print a dictionary
+        match self.display_items[self.selection_index]:
+            case ('user', x, _):
+                self.user.user_delete(x)
+            case ('budget', x, _):
+                self.budget.budget_delete(self.user_id, x)
+            case ('category', x, _):
+                self.category.category_delete(self.user_id, self.selected_budget, x)
+            case ('group', x, _):
+                self.group.group_delete(self.user_id, self.selected_budget, x)
+            case ('transaction', x, _):
+                self.transaction.transaction_delete(self.user_id, self.selected_budget, x)
+            case _:
+                raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
 
-        :param data: Dictionary to be printed
-        :param headers: Ordered dictionary keys
-        :param display_headers: Ordered header alias
-        :return: None
+    def back(self) -> None:
         """
-        list = [[row[h] for h in headers] for row in data]
-        print(tabulate(list, headers=display_headers, tablefmt="pipe"))
-
-    def debug(self, message: str) -> None:
+        Go back a page by unsetting the relevant variable
         """
-        Log a debug message if debug_mode is set
-
-        :param message: Message to display
-        """
-        if self.debug_mode:
-            for line in message.split("\n"):
-                print(Fore.GREEN + f"DEBUG: {line}")
+        debug(self.debug_mode, f"Back called")
+        self.up_to_date = False
+        if self.selected_category is not None:
+            self.selected_category = None
+            return
+        if self.selected_group is not None:
+            self.selected_group = None
+            return
+        if self.selected_budget is not None:
+            self.selected_budget = None
+            return
+        if self.user_id is not None:
+            self.user_id = None
+            return
 
     def validate_user_budget(self) -> None:
         if not self.user_id: raise Exception("Called general list without user_id set")
@@ -225,279 +193,118 @@ class Model:
         List groups and categories within a budget
         """
         if not self.up_to_date:
-            self.validate_user_budget()
-            categories = self.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories")
-            groups = self.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups")
+            if self.user_id is None:
+                users = self.user.user_list()
+                self.display_items.clear()
+                if users:
+                    self.display_items = [
+                        ("user", u["user_id"], u["username"] + " - " + u["email"]) for u in users
+                    ]
+                    self.up_to_date = True
+            elif self.selected_budget is None:
+                budgets = self.budget.budget_list(self.user_id)
+                self.display_items.clear()
+                if budgets:
+                    self.display_items = [
+                        ("budget", b["budget_id"], b["budget_name"]) for b in budgets
+                    ]
+                    self.up_to_date = True
+            elif self.selected_group is not None:
+                categories = self.category.category_list(
+                    self.user_id,
+                    self.selected_budget,
+                    self.selected_group
+                )
+                self.display_items.clear()
+                if categories:
+                    self.display_items = [
+                        ("category", c["category_id"], c["category_name"]) for c in categories
+                    ]
+                    self.up_to_date = True
+            elif self.selected_category is not None:
+                transactions = self.transaction.transaction_list(
+                    self.user_id,
+                    self.selected_budget,
+                    self.selected_category
+                )
+                self.display_items.clear()
+                if transactions:
+                    self.display_items = [
+                        ("transaction", t["transaction_id"], t["transaction_name"]) for t in transactions
+                    ]
+                    self.up_to_date = True
+            else:
+                self.list_categories_and_groups()
+                self.up_to_date = True
 
-            self.display_items.clear()
-            for group in groups:
-                self.display_items.append(('group', int(group["group_id"]), group["group_name"]))
-
-            ungrouped = []
-            for index, item in enumerate(self.display_items):
-                for c in categories:
-                    if c["group_id"] == item:
-                        self.display_items.insert(index, ("category", c["category_id"], c["category_name"]))
-                    else:
-                        ungrouped.append(("category", c["category_id"], c["category_name"]))
-
-            self.display_items = ungrouped + self.display_items
-
+        ungrouped = True
         for index, item in enumerate(self.display_items):
             # Display selected item
-            if index == self.selection_index: print(" -> ", end="")
-            else: print("    ", end="")
-            # Tab in categories for distinction from groups
-            if item[0] == "category": print("  ", end="")
+            if index == self.selection_index:
+                print(" -> ", end="")
+            else:
+                print("    ", end="")
 
-            print(f"{item[0]} - {item[1]}: {item[2]}")
+            if item[0] == "group":
+                ungrouped = False
+                print(Fore.LIGHTBLACK_EX + f"{item[2]}")
+            elif item[0] == "category":
+                # Tab in categories for distinction from groups
+                if not ungrouped: print("  ", end="")
+                print(Fore.LIGHTCYAN_EX + f"{item[2]}")
+            print(Fore.LIGHTGREEN_EX + f"{item[2]}")
 
-    ######################################################################
-    # Login Page
-    ######################################################################
-    def sign_in(self) -> None:
-        """
-        Ask for and set a user id, triggering the choose budget page
-        """
-        self.user_id = int(input("User ID: "))
-        user = self.get_api(f"users/{self.user_id}")
-        self.user_id = user["user_id"]
-        self.username = user["username"]
-        self.email = user["email"]
+    def list_categories_and_groups(self) -> None:
+        self.validate_user_budget()
+        categories = self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories")
+        groups = self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups")
 
-    ######################################################################
-    # Select Budget Page
-    ######################################################################
+        if categories is None or groups is None:
+            return
 
-    ######################################################################
-    # Home Page
-    ######################################################################
+        self.display_items.clear()
 
-    ######################################################################
-    # User
-    ######################################################################
+        grouped = {}
+        ungrouped = []
+
+        for c in categories:
+            group_id = c["group_id"]
+            if group_id is None:
+                ungrouped.append(("category", c["category_id"], c["category_name"]))
+            else:
+                if group_id not in grouped:
+                    grouped[group_id] = []
+                grouped[group_id].append(("category", c["category_id"], c["category_name"]))
+
+        self.display_items.extend(ungrouped)
+
+        for g in groups:
+            self.display_items.append(("group", g["group_id"], g["group_name"]))
+
+            if g["group_id"] in grouped.keys():
+                self.display_items.extend(grouped[g["group_id"]])
+
     def user_create(self) -> None:
-        """
-        Prompt for user input and push to database
-        """
-        username = input("Username: ")
-        email = input("Email: ")
-        user = {'username': username, 'email': email}
-        response = self.post_api("users", user)
-
+        self.user.user_create()
         self.up_to_date = False
 
-    def user_update(self) -> None:
-        """
-        Prompt for information and update the user with it
-        """
-        if self.validate_choice("Are you sure you want to update this user?"):
-            username = input("New username: ")
-            email = input("New email: ")
-            self.patch_api(f"users/{self.user_id}", {"username": username, "email": email})
-
-    def user_delete(self) -> None:
-        """
-        Prompt for and delete a user
-        """
-        if self.validate_choice("Are you sure you want to delete this user?"):
-            self.delete_api(f"users/{self.user_id}")
-
-    def user_list(self) -> None:
-        """
-        Print users to console
-        """
-        if not self.up_to_date:
-            self.up_to_date = True
-            users = self.get_api("users")
-
-            # Update the displayed items for use in selection
-            self.display_items.clear()
-            for user in users:
-                self.display_items.append(('user', user["user_id"], user["username"] + " - " + user["email"]))
-
-        self.list()
-        #self.print_dict(
-        #    data = users,
-        #    headers = ["user_id", "username", "email", "created_at"],
-        #    display_headers = ["ID", "Username", "Email", "Created"]
-        #)
-
-    def user_info(self) -> None:
-        """
-        Prompt for user ID and print respective info
-        """
-        id = int(input("User ID: "))
-        user = self.get_api(f"users/{id}")
-        self.print_dict(
-            data = user,
-            headers = ["user_id", "username", "email", "created_at"],
-            display_headers = ["ID", "Username", "Email", "Created"]
-        )
-
-    ######################################################################
-    # Budget
-    ######################################################################
     def budget_create(self) -> None:
-        """
-        Prompt for and create a budget
-        """
-        self.debug("Entered budget_create")
-        budget_name = input("Budget Name: ")
-        budget_description = input("Budget Description: ")
-        budget = {"budget_name": budget_name, "budget_description": budget_description}
-        response = self.post_api(f"users/{self.user_id}/budgets", budget)
-
+        if self.user_id is None:
+            return
+        self.budget.budget_create(self.user_id)
         self.up_to_date = False
 
-    def budget_update(self) -> None:
-        """
-        Prompt for and update selected budget
-        """
-        budget_name = input("Updated budget name: ")
-        budget_description = input("Updated budget description: ")
-        budget = {"budget_name": budget_name, "budget_description": budget_description}
-        response = self.patch_api(f"users/{self.user_id}/budgets/{self.selected_budget}", budget)
-
-    def budget_delete(self) -> None:
-        """
-        Validate then delete selected budget
-        """
-        if self.validate_choice("Are you sure you want to delete this budget?"):
-            self.delete_api(f"/api/{self.user_id}/budgets/{self.selected_budget}")
-
-    def budget_list(self) -> None:
-        """Get budgets to print and add to display_items"""
-        if not self.up_to_date:
-            self.up_to_date = True
-            budgets = self.get_api(f"users/{self.user_id}/budgets")
-
-            # Update the displayed items for use in selection
-            self.display_items.clear()
-            for budget in budgets:
-                self.display_items.append(('budget', budget["budget_id"], budget["budget_name"]))
-
-        self.list()
-        # Pretty print dictionary to UI
-        #self.print_dict(
-        #    data = budgets,
-        #    headers = ["budget_id", "budget_name", "budget_description"],
-        #    display_headers = ["ID", "Budget Name", "Budget Description"]
-        #)
-
-    def budget_info(self):
-        pass
-
-    ######################################################################
-    # Category
-    ######################################################################
     def category_create(self) -> None:
-        """
-        Prompt for and create a new category
-        """
-        name = input("Category Name: ")
-        time_allocated = self.get_time("Time Allocated: ")
-        category = {"category_name": name, "time_allocated": time_allocated}
-        response = self.post_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories", category)
-
+        self.validate_user_budget()
+        self.category.category_create(self.user_id, self.selected_budget)
         self.up_to_date = False
 
-    def category_update(self, category_id: int) -> None:
-        """
-        Prompt for and update the given category
-        :param category_id: The category to update
-        """
-        category_name = input("Updated category name: ")
-        time_allocated = input("Updated time allocated: ")
-        category = {"category_name": category_name, "time_allocated": time_allocated}
-        response = self.patch_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories/{category_id}", category)
-
-    def category_delete(self, category_id: int) -> None:
-        """
-        Prompt for and delete the given category
-        :param category_id: Category to delete
-        """
-        if self.validate_choice("Are you sure you want to delete this category?"):
-            response = self.delete_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories/{category_id}")
-
-    def category_list(self) -> None:
-        pass
-
-    def category_info(self):
-        pass
-
-    ######################################################################
-    # Group
-    ######################################################################
     def group_create(self) -> None:
-        """
-        Prompt for and create a group
-        """
-        group_name = input("Group name: ")
-        group = {"group_name": group_name}
-        response = self.post_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups", group)
-
+        self.validate_user_budget()
+        self.group.group_create(self.user_id, self.selected_budget)
         self.up_to_date = False
 
-    def group_update(self, group_id) -> None:
-        """
-        Prompt for and update the given group
-        :param group_id: Group to update
-        """
-        group_name = input("Updated group name: ")
-        group = {"group_name": group_name}
-        response = self.post_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups/{group_id}", group)
-
-    def group_delete(self, group_id) -> None:
-        """
-        Prompt for and delete the given group
-        :param group_id: The group to delete
-        """
-        if self.validate_choice("Are you sure you want to delete this group?"):
-            response = self.delete_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups/{group_id}")
-
-    def group_list(self):
-        pass
-
-    def group_info(self):
-        pass
-
-    ######################################################################
-    # Transaction
-    ######################################################################
-    def transaction_create(self):
-        """
-        Prompt for and create a transaction
-        """
-        transaction_name = input("Transaction name: ")
-        period = self.get_time("Period: ")
-        group_id = self.selected_group
-        transaction = {"transaction_name": transaction_name, "period": period, "group_id": group_id}
-        response = self.post_api(f"users/{self.user_id}/budgets/{self.selected_budget}/transactions", transaction)
-
-        # TODO Do we need to unset up_to_date?
-
-    def transaction_update(self, transaction_id) -> None:
-        """
-        Prompt for and update the given transaction
-        :param transaction_id: The transaction to update
-        """
-        transaction_name = input("Updated transaction name: ")
-        period = self.get_time("Updated period: ")
-        group_id = self.selected_group
-        transaction = {"transaction_name": transaction_name, "period": period, "group_id": group_id}
-        response = self.patch_api(f"users/{self.user_id}/budgets/{self.selected_budget}/transactions/{transaction_id}", transaction)
-
-    def transaction_delete(self, transaction_id) -> None:
-        """
-        Prompt for and delete the given transaction
-        :param transaction_id: The transaction to delete
-        """
-        if self.validate_choice("Are you sure you want to delete this transaction?"):
-            response = self.delete_api(f"users/{self.user_id}/budgets/{self.selected_budget}/transactions/{transaction_id}")
-
-    def transaction_list(self):
-        pass
-
-    def transaction_info(self):
-        pass
+    def transaction_create(self) -> None:
+        self.validate_user_budget()
+        self.transaction.transaction_create(self.user_id, self.selected_budget)
+        self.up_to_date = False
