@@ -57,7 +57,7 @@ def update_user(user_id):
 
     db.session.commit()
 
-    return jsonify(user.to_dict()), 200
+    return jsonify(user.to_dict()), 201
 
 @user_bp.delete('/<int:user_id>')
 def delete_user(user_id):

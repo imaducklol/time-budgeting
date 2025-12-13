@@ -41,8 +41,26 @@ def get_budget(user_id, budget_id):
 
 @budget_bp.patch('/<int:budget_id>')
 def update_budget(user_id, budget_id):
-    pass
+    data = request.get_json()
+    if not data or not data.get('budget_name'):
+        return jsonify({'error': 'Budget name not provided.'}), 400
+
+    budget = Budget.query.filter(Budget.budget_id == budget_id).first()
+    if not budget:
+        return jsonify({'error': 'Budget not found.'}), 404
+
+    budget.budget_name = data.get('budget_name')
+
+    db.session.commit()
+
+    return jsonify(budget.to_dict()), 201
 
 @budget_bp.delete('/<int:budget_id>')
 def delete_budget(user_id, budget_id):
-    pass
+    budget = Budget.query.filter(Budget.budget_id == budget_id).first()
+    if not budget:
+        return jsonify({'error': 'Budget not found.'}), 404
+    db.session.delete(budget)
+    db.session.commit()
+
+    return jsonify({'message': 'Transaction deleted'}), 200
