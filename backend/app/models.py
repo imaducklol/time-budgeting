@@ -69,6 +69,15 @@ class Category(db.Model):
             'group_id': self.group_id,
         }
 
+    def to_dict_with_transactions(self):
+        transactions = Transaction.query.filter_by(category_id=self.category_id).all()
+
+        total_seconds = sum(t.period.total_seconds() for t in transactions)
+
+        return_dict = self.to_dict()
+        return_dict['time_used'] = total_seconds
+        return return_dict
+
 class Group(db.Model):
     __tablename__ = 'group'
 
@@ -96,7 +105,7 @@ class Transaction(db.Model):
         return {
             'transaction_id': self.transaction_id,
             'transaction_name': self.transaction_name,
-            'period': self.period,
+            'period': self.period.total_seconds(),
             'date_time': self.date_time,
         }
 
