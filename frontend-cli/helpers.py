@@ -75,75 +75,22 @@ def print_dict(data: dict, headers: list[str], display_headers: list[str]) -> No
 
 
 if sys.platform == "win32":
-    import msvcrt
-
-
     def clear_console():
         os.system("cls")
-
-
-    def get_key():
-        """Return a key press on Windows, or None if no key pressed."""
-        if msvcrt.kbhit():
-            first = msvcrt.getch()
-            # Arrow key codes begin with these escape strings
-            if first in (b"\x00", b"\xe0"):
-                second = msvcrt.getch().decode()
-                match second:
-                    case "H":
-                        return "UP"
-                    case "P":
-                        return "DOWN"
-                    case "K":
-                        return "LEFT"
-                    case "M":
-                        return "RIGHT"
-            else:
-                # If not fancy, just decode it
-                ch = first.decode("utf-8")
-                # Normalize behaviour of certain keys across Windows/Unix
-                if ch == "\r": return "\n"
-                if ch == "\x0b": return "ESC"
-                return ch
-        return None
-
 else:
-    import tty
-    import termios
-    import select
-
-
     def clear_console():
         os.system("clear")
 
+from blessed import Terminal
 
-    def get_key():
-        """Return a key press on Unix, or None if no key pressed."""
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            # check if input is available
-            if select.select([sys.stdin], [], [], 0)[0]:
-                ch = sys.stdin.read(1)
-                if ch == "\x1b":  # ESC
-                    # Try to read the next two chars if available
-                    if select.select([sys.stdin], [], [], 0)[0]:
-                        ch1 = sys.stdin.read(1)
-                        if ch1 == "[":
-                            if select.select([sys.stdin], [], [], 0)[0]:
-                                ch2 = sys.stdin.read(1)
-                                if ch2 == "A":
-                                    return "UP"
-                                elif ch2 == "B":
-                                    return "DOWN"
-                                elif ch2 == "C":
-                                    return "RIGHT"
-                                elif ch2 == "D":
-                                    return "LEFT"
-                    return "ESC"
-                else:
-                    return ch
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return None
+term = Terminal()
+
+def get_key():
+    with term.cbreak():
+        key = term.inkey(timeout=0.1)
+        if not key:
+            return None
+
+        if key.name:
+            return key.name  # 'KEY_UP', 'KEY_DOWN', 'KEY_LEFT', 'KEY_RIGHT'
+        return str(key)

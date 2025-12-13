@@ -19,31 +19,31 @@ class Screen:
             {
                 "label": "k/↑ ",
                 "desc": "Up",
-                "keys": ["k", "UP"],
+                "keys": ["k", "KEY_UP"],
                 "func": self.model.highlight_up
             },
             {
                 "label": "j/↓",
                 "desc": "Down",
-                "keys": ["j", "DOWN"],
+                "keys": ["j", "KEY_DOWN"],
                 "func": self.model.highlight_down
             },
             {
                 "label": "⎋/←",
                 "desc": "Back",
-                "keys": ["ESC", "LEFT"],
+                "keys": ["ESC", "KEY_LEFT"],
                 "func": self.model.back
             },
             {
                 "label": "l/→",
                 "desc": "Edit",
-                "keys": ["l", "RIGHT"],
+                "keys": ["l", "KEY_RIGHT"],
                 "func": self.model.edit_item
             },
             {
                 "label": "␣/↩",
                 "desc": "Select",
-                "keys": [" ", "\n"],
+                "keys": [" ", "KEY_ENTER"],
                 "func": self.model.select_item
             },
             {
@@ -71,6 +71,7 @@ class Screen:
         while True:
             key = get_key()
             if not key: continue
+            print(key)
             if key in self._keymap:
                 clear_console()
                 self._keymap[key]()
