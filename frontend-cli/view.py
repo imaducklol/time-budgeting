@@ -71,7 +71,6 @@ class Screen:
         while True:
             key = get_key()
             if not key: continue
-            print(key)
             if key in self._keymap:
                 clear_console()
                 self._keymap[key]()
@@ -120,28 +119,15 @@ class BudgetSelection(Screen):
 class Home(Screen):
     def __init__(self, model: Model):
         super().__init__(model)
-        self._options.extend([
-            {
-                "label": "a",
-                "desc": "Create category",
-                "keys": ["a"],
-                "func": model.category_create,
-            },
-            {
-                "label": "s",
-                "desc": "Create group",
-                "keys": ["s"],
-                "func": model.group_create,
-            },
-            {
-                "label": "f",
-                "desc": "Log transaction",
-                "keys": ["f"],
-                "func": model.transaction_create,
-            }
-        ])
+        self._options.append(
+            {"label": "s", "desc": "Create group", "keys": ["s"], "func": model.group_create, })
+        self._options.append(
+            {"label": "a", "desc": "Create category", "keys": ["a"], "func": model.category_create, })
+        self._options.append(
+            {"label": "f", "desc": "Log transaction", "keys": ["f"], "func": model.transaction_create, })
         self.set_keymap()
 
     def display(self):
-        print("¯\\_(ツ)_/¯")
+        print(f"Logged in as user {self.model.user_id}: {self.model.username}")
+        print(f"Budget selected: {self.model.selected_budget} - {self.model.selected_budget_name}")
         self.model.list()

@@ -42,8 +42,9 @@ class Group:
         if validate_choice("Are you sure you want to delete this group?"):
             response = self.api_handler.delete_api(f"users/{user_id}/budgets/{budget_id}/groups/{group_id}")
 
-    def group_list(self):
-        pass
+    def group_list(self, user_id, budget_id):
+        groups = self.api_handler.get_api(f"users/{user_id}/budgets/{budget_id}/groups")
+        return groups
 
     def group_info(self):
         pass

@@ -31,7 +31,7 @@ class ApiHandler:
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 404:
-                error(f"Endpoint {endpoint} not found, returned 404")
+                error(f"Endpoint {query} not found, returned 404")
             else:
                 error(f"Something went wrong, returned {response.status_code}")
         except Exception:
@@ -52,11 +52,11 @@ class ApiHandler:
             if response.status_code == 201:
                 return response.json()
             elif response.status_code == 404:
-                raise Exception(f"Endpoint {endpoint} not found, returned 404")
+                error(f"Endpoint {query} not found, returned 404")
             else:
                 error(f"Something went wrong, returned {response.status_code}")
-        except Exception:
-            return None
+        except Exception as e:
+            error(f"Something went wrong, errored with code {e}")
 
     def delete_api(self, endpoint: str) -> Union[dict[str, str], None]:
         """

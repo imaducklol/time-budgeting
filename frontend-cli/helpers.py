@@ -22,12 +22,22 @@ def get_interval(message: str) -> timedelta:
     Return a properly formatted interval for sql
     :param message: Message to display
     """
-    print(message)
     days = int(input("Days: "))
     hours = int(input("Hours: "))
     minutes = int(input("Minutes: "))
 
     return timedelta(days=days, hours=hours, minutes=minutes)
+
+def interval_to_str(seconds: int) -> str:
+    days = seconds // (24 * 60 * 60)
+    remaining_seconds = seconds % (24 * 60 * 60)
+
+    hours = remaining_seconds // (60 * 60)
+    remaining_seconds %= (60 * 60)
+
+    minutes = remaining_seconds // 60
+    remaining_seconds %= 60
+    return f"Days: {days} Hours: {hours} Minutes: {minutes}"
 
 
 def debug(debug_mode: bool, message: str) -> None:

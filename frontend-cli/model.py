@@ -5,13 +5,15 @@ Updated: 2025-12-11
 
 Model handling the logic of the cli frontend
 """
+from datetime import timedelta
+from typing import Union, Any
 
 import colorama
 from colorama import init, Fore, Style
 
 import view
 from api import ApiHandler
-from helpers import debug
+from helpers import debug, interval_to_str
 from operations.user import User
 from operations.budget import Budget
 from operations.category import Category
@@ -25,16 +27,18 @@ class Model:
     # Login data
     user_id: int | None = None
     username: str | None = None
-    email: int | None = None
 
     # Is an item selected?
     selected_budget: int | None = None
+    selected_budget_name: str | None = None
     selected_category: int | None = None
+    selected_category_name: str | None = None
     selected_group: int | None = None
+    selected_group_name: str | None = None
 
     # Items available for selection/display
     selection_index: int = None
-    display_items: list[tuple[str, int, str]] = []
+    display_items: list[tuple[str, int, Union[str, tuple]]] = []
 
     up_to_date: bool = False
 
@@ -113,14 +117,17 @@ class Model:
                 self.user_id = x
                 self.username = y
                 self.up_to_date = False
-            case ('budget', x, _):
+            case ('budget', x, y):
                 self.selected_budget = x
+                self.selected_budget_name = y
                 self.up_to_date = False
-            case ('category', x, _):
+            case ('category', x, y):
                 self.selected_category = x
+                self.selected_category_name = y
                 self.up_to_date = False
-            case ('group', x, _):
+            case ('group', x, y):
                 self.selected_group = x
+                self.selected_group_name = y
                 self.up_to_date = False
             # case ('transaction', x, _):
             #     self.up_to_date = False
@@ -161,7 +168,7 @@ class Model:
             case ('group', x, _):
                 self.group.group_delete(self.user_id, self.selected_budget, x)
             case ('transaction', x, _):
-                self.transaction.transaction_delete(self.user_id, self.selected_budget, x)
+                self.transaction.transaction_delete(self.user_id, self.selected_budget, self.selected_category, x)
             case _:
                 raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
 
@@ -184,7 +191,7 @@ class Model:
             self.user_id = None
             return
 
-    def validate_user_budget(self) -> None:
+    def validate_user_budget_ids(self) -> None:
         if not self.user_id: raise Exception("Called general list without user_id set")
         if not self.selected_budget: raise Exception("Called general list without budget_id set")
 
@@ -209,19 +216,8 @@ class Model:
                         ("budget", b["budget_id"], b["budget_name"]) for b in budgets
                     ]
                     self.up_to_date = True
-            elif self.selected_group is not None:
-                categories = self.category.category_list(
-                    self.user_id,
-                    self.selected_budget,
-                    self.selected_group
-                )
-                self.display_items.clear()
-                if categories:
-                    self.display_items = [
-                        ("category", c["category_id"], c["category_name"]) for c in categories
-                    ]
-                    self.up_to_date = True
             elif self.selected_category is not None:
+                print(f"Category selected: {self.selected_category} - {self.selected_category_name}")
                 transactions = self.transaction.transaction_list(
                     self.user_id,
                     self.selected_budget,
@@ -230,7 +226,20 @@ class Model:
                 self.display_items.clear()
                 if transactions:
                     self.display_items = [
-                        ("transaction", t["transaction_id"], t["transaction_name"]) for t in transactions
+                        ("transaction", t["transaction_id"], (t["transaction_name"], t["period"])) for t in transactions
+                    ]
+                    self.up_to_date = True
+            elif self.selected_group is not None:
+                print(f"Group selected: {self.selected_group} - {self.selected_group_name}")
+                categories = self.category.category_list(
+                    self.user_id,
+                    self.selected_budget,
+                    self.selected_group
+                )
+                self.display_items.clear()
+                if categories:
+                    self.display_items = [
+                        ("category", c["category_id"], (c["category_name"], c["time_allocated"], c["time_used"])) for c in categories
                     ]
                     self.up_to_date = True
             else:
@@ -247,17 +256,25 @@ class Model:
 
             if item[0] == "group":
                 ungrouped = False
-                print(Fore.LIGHTBLACK_EX + f"{item[2]}")
+                print(Fore.LIGHTGREEN_EX + f"{item[2]}")
             elif item[0] == "category":
                 # Tab in categories for distinction from groups
-                if not ungrouped: print("  ", end="")
-                print(Fore.LIGHTCYAN_EX + f"{item[2]}")
-            print(Fore.LIGHTGREEN_EX + f"{item[2]}")
+                offset = 35
+                if not ungrouped:
+                    offset -= 2
+                    print("  ", end="")
+                name, time_allocated, time_used = item[2]
+                print(Fore.LIGHTCYAN_EX + f"{name:{offset}} {time_used/time_allocated*100:>3.0f}% used")
+            elif item[0] == "transaction":
+                name, period = item[2]
+                print(Fore.LIGHTMAGENTA_EX + f"{name:15}" + interval_to_str(period))
+            else:
+                print(Fore.LIGHTBLUE_EX + f"{item[2]}")
 
     def list_categories_and_groups(self) -> None:
-        self.validate_user_budget()
-        categories = self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories")
-        groups = self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups")
+        self.validate_user_budget_ids()
+        categories = self.category.category_list(self.user_id, self.selected_budget) # self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/categories")
+        groups = self.group.group_list(self.user_id, self.selected_budget) # self.api_handler.get_api(f"users/{self.user_id}/budgets/{self.selected_budget}/groups")
 
         if categories is None or groups is None:
             return
@@ -270,11 +287,11 @@ class Model:
         for c in categories:
             group_id = c["group_id"]
             if group_id is None:
-                ungrouped.append(("category", c["category_id"], c["category_name"]))
+                ungrouped.append(("category", c["category_id"], (c["category_name"], c["time_allocated"], c["time_used"])))
             else:
                 if group_id not in grouped:
                     grouped[group_id] = []
-                grouped[group_id].append(("category", c["category_id"], c["category_name"]))
+                grouped[group_id].append(("category", c["category_id"], (c["category_name"], c["time_allocated"], c["time_used"])))
 
         self.display_items.extend(ungrouped)
 
@@ -295,16 +312,27 @@ class Model:
         self.up_to_date = False
 
     def category_create(self) -> None:
-        self.validate_user_budget()
-        self.category.category_create(self.user_id, self.selected_budget)
+        self.validate_user_budget_ids()
+        if self.selected_group is None:
+            self.category.category_create(self.user_id, self.selected_budget)
+        else:
+            self.category.category_create(self.user_id, self.selected_budget, self.selected_group)
         self.up_to_date = False
 
     def group_create(self) -> None:
-        self.validate_user_budget()
+        self.validate_user_budget_ids()
         self.group.group_create(self.user_id, self.selected_budget)
         self.up_to_date = False
 
     def transaction_create(self) -> None:
-        self.validate_user_budget()
-        self.transaction.transaction_create(self.user_id, self.selected_budget)
-        self.up_to_date = False
+        self.validate_user_budget_ids()
+        self.validate_index()
+        if self.selected_category is not None:
+            self.transaction.transaction_create(self.user_id, self.selected_budget, self.selected_category)
+            self.up_to_date = False
+        elif self.display_items[self.selection_index][0] == "category":
+            category_id = self.display_items[self.selection_index][1]
+            self.transaction.transaction_create(self.user_id, self.selected_budget, category_id)
+            self.up_to_date = False
+        else:
+            print("Create a transaction with a category selected!")

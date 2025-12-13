@@ -20,8 +20,7 @@ class Budget:
         Prompt for and create a budget
         """
         budget_name = input("Budget Name: ")
-        budget_description = input("Budget Description: ")
-        budget = {"budget_name": budget_name, "budget_description": budget_description}
+        budget = {"budget_name": budget_name}
         response = self.api_handler.post_api(f"users/{user_id}/budgets", budget)
 
         self.up_to_date = False
@@ -31,10 +30,8 @@ class Budget:
         Prompt for and update selected budget
         """
         budget_name = input("Updated budget name: ")
-        budget_description = input("Updated budget description: ")
         budget = {
             "budget_name": budget_name,
-            "budget_description": budget_description
         }
         response = self.api_handler.patch_api(
             f"users/{user_id}/budgets/{budget_id}", budget
