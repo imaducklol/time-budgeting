@@ -88,7 +88,7 @@ class ApiHandler:
         debug(self.debug_mode, f"Updating: {query}\nData: {data}")
         try:
             response = requests.patch(query, json=data)
-            if response.status_code == 200:
+            if response.status_code == 201:
                 return response.json()
             elif response.status_code == 404:
                 error(f"Endpoint {endpoint} not found, returned 404")

@@ -45,6 +45,8 @@ class User:
         Print users to console
         """
         users = self.api_handler.get_api("users")
+        if users is not None:
+            users = users[:15]
         return users
 
     def user_info(self) -> None:

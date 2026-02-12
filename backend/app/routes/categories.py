@@ -32,7 +32,7 @@ def create_category(user_id, budget_id):
 
     category = Category(
         category_name=data.get('category_name'),
-        time_allocated=timedelta(data.get('time_allocated')),
+        time_allocated=timedelta(seconds=data.get('time_allocated')),
         group_id=data.get('group_id'),
         budget_id=budget_id
     )
@@ -64,7 +64,7 @@ def update_category(user_id, budget_id, category_id):
 
     return jsonify(category.to_dict()), 201
 
-@category_bp.delete('/<int:group_id>')
+@category_bp.delete('/<int:category_id>')
 def delete_category(user_id, budget_id, category_id):
     category = Category.query.filter(Category.category_id == category_id).first()
 

@@ -15,6 +15,7 @@ CONFIG = {
     'num_transactions_per_category': 15,
     'delay_between_requests': 0.00
 }
+session = requests.Session()
 
 def log_progress(message: str):
     """Print progress with timestamp"""
@@ -23,7 +24,7 @@ def log_progress(message: str):
 def post_request(url: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Make POST request and return response JSON"""
     try:
-        response = requests.post(url, json=data)
+        response = session.post(url, json=data)
         response.raise_for_status()
         time.sleep(CONFIG['delay_between_requests'])
         return response.json()

@@ -152,6 +152,7 @@ class Model:
                 self.transaction.transaction_update(self.user_id, self.selected_budget, x)
             case _:
                 raise Exception(f"Invalid selection: {self.display_items[self.selection_index]}")
+        self.up_to_date = False
 
     def delete_item(self):
         self.validate_index()
@@ -267,7 +268,7 @@ class Model:
                 print(Fore.LIGHTCYAN_EX + f"{name:{offset}} {time_used/time_allocated*100:>3.0f}% used")
             elif item[0] == "transaction":
                 name, period = item[2]
-                print(Fore.LIGHTMAGENTA_EX + f"{name:15}" + interval_to_str(period))
+                print(Fore.LIGHTMAGENTA_EX + f"{name:35}" + interval_to_str(period))
             else:
                 print(Fore.LIGHTBLUE_EX + f"{item[2]}")
 

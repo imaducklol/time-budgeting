@@ -15,7 +15,7 @@ user_bp = Blueprint('user', __name__, url_prefix='/api/users')
 @user_bp.get('')
 def get_users():
     """Get all users"""
-    users = User.query.all()
+    users = User.query.order_by(User.user_id.desc()).all()
     return jsonify([user.to_dict() for user in users]), 200
 
 @user_bp.get('/<int:user_id>')
